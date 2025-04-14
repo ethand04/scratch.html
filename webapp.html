@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Web App</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: #000;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      color: #fff;
+      font-family: Arial, sans-serif;
+      overflow: hidden;
+    }
+    canvas {
+      border: 2px solid #fff;
+      background: #111;
+    }
+    #overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 10;
+    }
+    #overlay img {
+      max-width: 80%;
+      max-height: 60%;
+      margin-bottom: 20px;
+    }
+    #restartBtn {
+      padding: 10px 20px;
+      font-size: 18px;
+      background: white;
+      color: black;
+      border: none;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="pong" width="800" height="500"></canvas>
+  <div id="overlay" style="display: none;">
+    <img id="resultGif" src="" alt="Result GIF">
+    <button id="restartBtn">Restart Game</button>
+  </div>
+
+  <script>
+    const canvas = document.getElementById("pong");
+    const ctx = canvas.getContext("2d");
+
+    const overlay = document.getElementById("overlay");
+    const resultGif = document.getElementById("resultGif");
+    const restartBtn = document.getElementById("restartBtn");
+
+    const paddleWidth = 10, paddleHeight = 100;
+    const ballSize = 10;
+
+    let userScore = 0;
+    let computerScore = 0;
+    const winningScore = 5;
+
+    let gameOver = false;
+
+    const player = {
+      x: 0,
+      y: canvas.height / 2 - paddleHeight / 2,
+      width: paddleWidth,
+      height: paddleHeight,
+      color: "white",
+      dy: 0
+    };
+
+    const computer = {
+      x: canvas.width - paddleWidth,
+      y: canvas.height / 2 - paddleHeight / 2,
+      width: paddleWidth,
+      height: paddleHeight,
+      color: "white",
+      dy: 4
+    };
+
+    const ball = {
+      x: canvas.width / 2,
+      y: canvas.height / 2,
+      size: ballSize,
+      speed: 5,
+      dx: 5,
+      dy: 5,
+      color: "white"
+    };
+
+    function drawRect(x, y, w, h, color) {
+      ctx.fillStyle = color;
+      ctx.fillRect(x, y, w, h);
+    }
+
+    function drawCircle(x, y, r, color) {
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    function drawText(text, x, y) {
+      ctx.fillStyle = "white";
+      ctx.font = "32px Arial";
+      ctx.fillText(text, x, y);
+    }
+
+    function drawNet() {
+      for (let i = 0; i < canvas.height; i += 20) {
+        drawRect(canvas.width / 2 - 1, i, 2, 10, "gray");
+      }
+    }
+
+    function draw() {
+      drawRect(0, 0, canvas.width, canvas.height, "#111");
+      drawNet();
+      drawRect(player.x, player.y, player.width, player.height, player.color);
+      drawRect(computer.x, computer.y, computer.width, computer.height, computer.color);
+      drawCircle(ball.x, ball.y, ball.size, ball.color);
+
+      drawText(userScore, canvas.width / 4, 50);
+      drawText(computerScore, 3 * canvas.width / 4, 50);
+    }
+
+    function update() {
+      if (gameOver) return;
+
+      player.y += player.dy;
+      player.y = Math.max(0, Math.min(player.y, canvas.height - player.height));
+
+      if (ball.y < computer.y + computer.height / 2) {
+        computer.y -= computer.dy;
+      } else {
+        computer.y += computer.dy;
+      }
+      computer.y = Math.max(0, Math.min(computer.y, canvas.height - computer.height));
+
+      ball.x += ball.dx;
+      ball.y += ball.dy;
+
+      if (ball.y - ball.size < 0 || ball.y + ball.size > canvas.height) {
+        ball.dy *= -1;
+      }
+
+      let paddle = (ball.x < canvas.width / 2) ? player : computer;
+      if (
+        ball.x < paddle.x + paddle.width &&
+        ball.x > paddle.x &&
+        ball.y < paddle.y + paddle.height &&
+        ball.y > paddle.y
+      ) {
+        ball.dx *= -1;
+      }
+
+      if (ball.x > canvas.width) {
+        userScore++;
+        checkWinner();
+        resetBall();
+      }
+
+      if (ball.x < 0) {
+        computerScore++;
+        checkWinner();
+        resetBall();
+      }
+    }
+
+    function checkWinner() {
+      if (userScore >= winningScore) {
+        showEnd("https://media3.giphy.com/media/lnlAifQdenMxW/giphy.gif");
+      } else if (computerScore >= winningScore) {
+        showEnd("https://y.yarn.co/e6cf37ca-f2cb-45ec-aa3e-bbf5deb69417_text.gif");
+      }
+    }
+
+    function resetBall() {
+      ball.x = canvas.width / 2;
+      ball.y = canvas.height / 2;
+      ball.dx = Math.random() > 0.5 ? 5 : -5;
+      ball.dy = Math.random() > 0.5 ? 5 : -5;
+    }
+
+    function showEnd(gifUrl) {
+      gameOver = true;
+      resultGif.src = gifUrl;
+      overlay.style.display = "flex";
+    }
+
+    function restartGame() {
+      userScore = 0;
+      computerScore = 0;
+      gameOver = false;
+      overlay.style.display = "none";
+      resetBall();
+      loop();
+    }
+
+    restartBtn.addEventListener("click", restartGame);
+
+    function loop() {
+      if (!gameOver) {
+        update();
+        draw();
+        requestAnimationFrame(loop);
+      }
+    }
+
+    document.addEventListener("keydown", e => {
+      if (e.key === "ArrowUp") player.dy = -6;
+      else if (e.key === "ArrowDown") player.dy = 6;
+    });
+
+    document.addEventListener("keyup", e => {
+      if (e.key === "ArrowUp" || e.key === "ArrowDown") player.dy = 0;
+    });
+
+    loop();
+  </script>
+</body>
+</html>
